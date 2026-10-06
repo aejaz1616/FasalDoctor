@@ -104,7 +104,6 @@ function Report({ result }) {
               <p className="price-meta">per quintal, {p.market}, {p.date}</p>
               <div className="price-row"><span>7-day range</span><span>₹{p.min.toLocaleString("en-IN")} to ₹{p.max.toLocaleString("en-IN")}</span></div>
               <div className="price-row"><span>7-day average</span><span>₹{p.avg7.toLocaleString("en-IN")}</span></div>
-              {p.scope === "state" && <p className="price-meta" style={{ marginTop: "0.6rem" }}>No data for your district, so this is the nearest Punjab mandi on file.</p>}
               {p.is_sample && <span className="sample-flag">Sample prices, not real market data</span>}
             </>
           ) : (
