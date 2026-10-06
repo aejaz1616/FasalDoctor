@@ -1,0 +1,12 @@
+{
+  "name": "fasaldoc-pages",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "embed": "node scripts/build-embeddings.mjs",
+    "prices": "node scripts/csv-to-prices.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^2.27.0"
+  }
+}

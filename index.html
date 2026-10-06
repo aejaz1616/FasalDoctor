@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F2C230">
+<meta name="description" content="Upload a photo of a sick leaf. Get the likely disease, what to do this week, and today's mandi price.">
+<title>FasalDoc: photo-based crop disease check</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 27C5 14 13 5 27 5c0 14-9 22-22 22Z' fill='%232E6B3C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@75..125,400..800&family=Anek+Gurmukhi:wdth,wght@75..125,400..800&family=Anek+Latin:wdth,wght@75..125,400..800&display=swap">
+<style>
+:root {
+  --sarson: #f2c230;
+  --sarson-deep: #d9a514;
+  --straw: #fff6d6;
+  --ink: #1e2a47;
+  --ink-soft: #4a5570;
+  --leaf: #2e6b3c;
+  --leaf-dark: #22512d;
+  --blight: #8a4b1c;
+  --paper: #ffffff;
+  --line: #e6dfc6;
+
+  --font: "Anek Latin", "Anek Devanagari", "Anek Gurmukhi", system-ui, sans-serif;
+  --measure: 66ch;
+  --radius-sm: 6px;
+  --radius-lg: 18px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; display: block; }
+a { color: var(--leaf-dark); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { width: min(1120px, 100% - 2.5rem); margin-inline: auto; }
+
+/* Masthead */
+.masthead {
+  background: var(--sarson);
+  padding-block: 1.1rem 0;
+}
+.masthead .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.brand {
+  font-weight: 800;
+  font-stretch: 112%;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.brand svg { width: 28px; height: 28px; }
+.masthead nav { display: flex; gap: 1.25rem; font-weight: 500; }
+.masthead nav a { color: var(--ink); text-decoration: none; }
+.masthead nav a:hover { text-decoration: underline; }
+
+/* Hero */
+.hero {
+  background: var(--sarson);
+  padding-block: 2.5rem 4rem;
+  border-bottom: 6px solid var(--sarson-deep);
+}
+.hero .wrap {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 3rem;
+  align-items: start;
+}
+.hero h1 {
+  margin: 0;
+  font-weight: 800;
+  font-stretch: 118%;
+  font-size: clamp(2.75rem, 6.5vw, 5.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+}
+.hero .hindi {
+  margin: 0.6rem 0 0;
+  font-family: "Anek Devanagari", var(--font);
+  font-weight: 600;
+  font-stretch: 100%;
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  line-height: 1.15;
+  color: var(--blight);
+}
+.hero .lede {
+  max-width: 44ch;
+  margin: 1.5rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+/* Upload panel */
+.panel {
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: 0 2px 0 var(--sarson-deep), 0 18px 40px -22px rgba(30, 42, 71, 0.55);
+}
+.panel h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 700; }
+
+.drop {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  min-height: 190px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--straw);
+  padding: 1rem;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.drop:hover, .drop.is-over { border-color: var(--leaf); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop .hint { color: var(--ink-soft); font-size: 0.95rem; }
+.drop strong { display: block; font-size: 1.1rem; color: var(--ink); }
+.drop img { max-height: 240px; border-radius: 4px; object-fit: contain; }
+.drop:focus-within { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; margin-top: 1rem; }
+.field label, .field legend { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+.field select {
+  width: 100%;
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+}
+fieldset.field { border: 0; padding: 0; margin: 1rem 0 0; grid-column: 1 / -1; }
+.langs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.langs label {
+  margin: 0;
+  font-weight: 500;
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.langs input { position: absolute; opacity: 0; pointer-events: none; }
+.langs input:checked + span { font-weight: 700; }
+.langs label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.langs label:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.btn {
+  margin-top: 1.25rem;
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.15rem;
+  padding: 0.9rem 1rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--leaf);
+  color: var(--paper);
+  cursor: pointer;
+}
+.btn:hover { background: var(--leaf-dark); }
+.btn:disabled { background: #8a9a8e; cursor: progress; }
+.form-note { margin: 0.75rem 0 0; font-size: 0.9rem; color: var(--ink-soft); }
+.form-error { margin: 0.75rem 0 0; color: var(--blight); font-weight: 600; }
+
+/* Report */
+.report-section { padding-block: 3.5rem; background: var(--straw); border-bottom: 1px solid var(--line); }
+.report {
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.report-head { padding: 2rem 2rem 1.5rem; border-bottom: 1px solid var(--line); }
+.report-head .crop { margin: 0; color: var(--ink-soft); font-weight: 500; }
+.report-head h2 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.report-head h2.is-healthy { color: var(--leaf); }
+.report-head .headline { margin: 0.9rem 0 0; font-size: 1.2rem; max-width: var(--measure); }
+
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; max-width: 640px; }
+.gauge-label { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; display: flex; justify-content: space-between; }
+.meter { height: 10px; background: var(--straw); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.meter span { display: block; height: 100%; background: var(--ink); }
+.severity { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.severity span {
+  text-align: center; font-size: 0.85rem; padding: 0.2rem 0;
+  border-radius: 4px; background: var(--straw); color: var(--ink-soft); border: 1px solid var(--line);
+}
+.severity span.on { background: var(--blight); border-color: var(--blight); color: var(--paper); font-weight: 600; }
+
+.report-body { display: grid; grid-template-columns: 1.4fr 1fr; }
+.report-main { padding: 2rem; border-right: 1px solid var(--line); }
+.report-side { padding: 2rem; background: #fffdf3; }
+.report h3 { margin: 0 0 0.6rem; font-size: 1.15rem; font-weight: 700; }
+.report p, .report li { max-width: var(--measure); }
+.report-main > * + h3 { margin-top: 1.75rem; }
+.steps { margin: 0; padding-left: 1.3rem; }
+.steps li { margin-bottom: 0.5rem; padding-left: 0.25rem; }
+.plain { margin: 0; padding-left: 1.1rem; }
+.plain li { margin-bottom: 0.35rem; }
+
+.caution {
+  margin-top: 1.75rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid var(--blight);
+  background: #fbf0e6;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.price-big { font-size: 2.4rem; font-weight: 800; font-stretch: 110%; line-height: 1; margin: 0.2rem 0; }
+.price-meta { color: var(--ink-soft); font-size: 0.95rem; margin: 0; }
+.price-row { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 0.5rem; margin-top: 0.75rem; font-size: 0.95rem; }
+.call {
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--paper);
+}
+.call strong { display: block; font-size: 1.1rem; }
+.call p { margin: 0.35rem 0 0; font-size: 0.95rem; }
+.sample-flag {
+  display: inline-block; margin-top: 0.6rem; font-size: 0.85rem; font-weight: 600;
+  background: var(--sarson); padding: 0.15rem 0.5rem; border-radius: 4px;
+}
+.sources { margin-top: 1.75rem; font-size: 0.95rem; }
+.sources ul { margin: 0; padding-left: 1.1rem; }
+.report .usage { max-width: none; margin: 0; }
+.usage { padding: 0.9rem 2rem; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--ink-soft); }
+
+.retake {
+  background: var(--paper); border: 1px solid var(--line); border-left: 6px solid var(--blight);
+  border-radius: var(--radius-sm); padding: 1.5rem 1.75rem;
+}
+.retake h2 { margin: 0 0 0.4rem; }
+.retake p { margin: 0; max-width: var(--measure); }
+
+/* How it works */
+.how { padding-block: 4.5rem; }
+.section-title { margin: 0 0 0.5rem; font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 800; font-stretch: 110%; letter-spacing: -0.015em; }
+.section-intro { margin: 0 0 2.25rem; max-width: 56ch; color: var(--ink-soft); font-size: 1.1rem; }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); counter-reset: step; }
+.flow li { counter-increment: step; padding: 0 1.25rem 0 0; position: relative; }
+.flow li::before {
+  content: counter(step);
+  display: grid; place-items: center;
+  width: 2.4rem; height: 2.4rem; border-radius: 50%;
+  background: var(--sarson); font-weight: 800; font-size: 1.1rem; margin-bottom: 0.9rem;
+  position: relative; z-index: 1;
+}
+.flow li:not(:last-child)::after {
+  content: ""; position: absolute; top: 1.2rem; left: 2.4rem; right: 0;
+  border-top: 2px dotted var(--sarson-deep);
+}
+.flow h3 { margin: 0 0 0.35rem; font-size: 1.1rem; }
+.flow p { margin: 0; font-size: 0.98rem; color: var(--ink-soft); }
+
+/* Sources and limits */
+.trust { padding-block: 4rem; background: var(--ink); color: var(--paper); }
+.trust .section-intro { color: #c9d0e0; }
+.trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+.trust h3 { margin: 0 0 0.6rem; font-size: 1.2rem; color: var(--sarson); }
+.trust ul { margin: 0; padding-left: 1.1rem; }
+.trust li { margin-bottom: 0.5rem; max-width: 52ch; }
+.trust a { color: var(--sarson); }
+
+footer { padding-block: 2rem; font-size: 0.95rem; color: var(--ink-soft); }
+footer p { margin: 0 0 0.4rem; max-width: var(--measure); }
+
+/* Loading */
+.working { display: flex; align-items: center; gap: 0.75rem; justify-content: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--paper); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .hero .wrap { grid-template-columns: 1fr; gap: 2rem; }
+  .report-body { grid-template-columns: 1fr; }
+  .report-main { border-right: 0; border-bottom: 1px solid var(--line); }
+  .flow { grid-template-columns: 1fr; gap: 1.5rem; }
+  .flow li { padding: 0 0 0 3.4rem; }
+  .flow li::before { position: absolute; left: 0; top: 0; margin: 0; }
+  .flow li:not(:last-child)::after { top: 2.4rem; bottom: -1.5rem; left: 1.2rem; right: auto; border-top: 0; border-left: 2px dotted var(--sarson-deep); }
+  .trust-grid { grid-template-columns: 1fr; gap: 2rem; }
+}
+@media (max-width: 560px) {
+  .masthead nav { display: none; }
+  .fields { grid-template-columns: 1fr; }
+  .gauges { grid-template-columns: 1fr; }
+  .report-head, .report-main, .report-side { padding: 1.4rem; }
+  .usage { padding: 0.9rem 1.4rem; }
+}
+
+.keybox { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.9rem; }
+.keybox summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+.keybox input {
+  width: 100%; margin-top: 0.5rem; font: inherit; padding: 0.55rem 0.7rem;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+}
+.keybox p { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+.mode-tag { font-size: 0.85rem; font-weight: 600; margin-left: 0.4rem; }
+.hidden { display: none !important; }
+
+</style>
+</head>
+<body>
+<div class="masthead">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27C5 14 13 5 27 5c0 14-9 22-22 22Z" fill="#2E6B3C"/><path d="M7 25 21 11" stroke="#F2C230" stroke-width="2" stroke-linecap="round"/><circle cx="17" cy="13" r="2.2" fill="#8A4B1C"/></svg>
+      <span id="appName">FasalDoc</span>
+    </a>
+    <nav aria-label="Sections"><a href="#how">How it works</a><a href="#sources">Sources and limits</a></nav>
+  </div>
+</div>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Show us the leaf.</h1>
+        <p class="hindi" lang="hi">पत्ता दिखाइए, इलाज जानिए।</p>
+        <p class="lede">Upload one photo of a sick leaf. You get the likely disease, what to do this week from Punjab and ICAR crop guides, and what your crop is fetching at the mandi today.</p>
+      </div>
+
+      <form class="panel" id="form" novalidate>
+        <h2>Check your crop</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" capture="environment" aria-label="Leaf photo">
+          <span id="dropText"><strong>Take or choose a photo</strong><span class="hint">One leaf filling the frame, in daylight</span></span>
+          <img id="preview" class="hidden" alt="Your leaf photo">
+        </label>
+
+        <div class="fields">
+          <div class="field">
+            <label for="crop">Crop</label>
+            <select id="crop"><option value="">Not sure</option></select>
+          </div>
+          <div class="field">
+            <label for="district">Your district</label>
+            <select id="district"></select>
+          </div>
+          <fieldset class="field">
+            <legend>Answer in</legend>
+            <div class="langs" id="langs"></div>
+          </fieldset>
+        </div>
+
+        <details class="keybox" id="keybox">
+          <summary>Gemini API key <span class="mode-tag" id="modeTag">(demo mode)</span></summary>
+          <input type="password" id="apiKey" autocomplete="off" placeholder="Paste your key to run real checks">
+          <p>The key stays in this browser tab only and is cleared when you close it. Never put a key in this file on GitHub.</p>
+        </details>
+
+        <button class="btn" type="submit" id="submit">Check my crop</button>
+        <p class="form-error hidden" id="error" role="alert"></p>
+        <p class="form-note">Takes about 10 seconds. Your photo is not stored.</p>
+      </form>
+    </div>
+  </section>
+
+  <section class="report-section hidden" id="report"><div class="wrap" id="reportInner"></div></section>
+
+  <section class="how" id="how">
+    <div class="wrap">
+      <h2 class="section-title">What happens after you upload</h2>
+      <p class="section-intro">Five steps, each one doing a separate job, so every part of the answer can be traced back.</p>
+      <ol class="flow">
+        <li><h3>Read the photo</h3><p>A vision model names the crop and the likely disease, and says how sure it is.</p></li>
+        <li><h3>Find the guidance</h3><p>We search Punjab and ICAR extension guides for that exact crop and disease.</p></li>
+        <li><h3>Check the mandi</h3><p>We look up today's price in your district and the 7-day average.</p></li>
+        <li><h3>Weigh sell or hold</h3><p>A fixed rule compares disease severity with the price trend.</p></li>
+        <li><h3>Explain it simply</h3><p>The answer is written in your language, citing the guide it used.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="trust" id="sources">
+    <div class="wrap">
+      <h2 class="section-title">Sources and limits</h2>
+      <p class="section-intro">A photo check is a first opinion, not a lab test. Here is what it relies on and where it can go wrong.</p>
+      <div class="trust-grid">
+        <div>
+          <h3>What the advice is based on</h3>
+          <ul>
+            <li>Treatment steps come only from the crop guides we have loaded. If no guide covers the problem, the answer says so.</li>
+            <li>Mandi prices come from Agmarknet data published by the Government of India.</li>
+            <li>The sell-or-hold signal is a simple, fixed rule, not a price forecast.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Where it can go wrong</h3>
+          <ul>
+            <li>Blurry, dark or crowded photos lower accuracy. The check will ask you to retake them.</li>
+            <li>Some diseases look alike. When confidence is low, confirm with an expert before spraying.</li>
+            <li>For a second opinion, call the Kisan Call Centre at 1800-180-1551 or visit your local Krishi Vigyan Kendra.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><p><span class="app-name">FasalDoc</span> is a student project built for the GenAI Startup Sprint. It gives general guidance only. Always read pesticide labels and follow local expert advice.</p></div></footer>
+
+<script>
+// ---------- Settings: change these in one place ----------
+const APP_NAME = "FasalDoc";
+const MAIN_MODEL = "gemini-2.5-flash-lite";
+const EMBED_MODEL = "gemini-embedding-001";
+const PRICE_INPUT_PER_M_USD = 0.1;   // check https://ai.google.dev/gemini-api/docs/pricing
+const PRICE_OUTPUT_PER_M_USD = 0.4;
+const USD_INR = 88;
+const KISAN_CALL_CENTRE = "1800-180-1551";
+
+const CROPS = ["Tomato", "Potato", "Maize", "Wheat", "Paddy", "Cotton"];
+const DISTRICTS = ["Ludhiana", "Jalandhar", "Amritsar", "Patiala", "Bathinda", "Hoshiarpur"];
+const LANGUAGES = [
+  { code: "en", label: "English", name: "English" },
+  { code: "hi", label: "हिन्दी", name: "Hindi" },
+  { code: "pa", label: "ਪੰਜਾਬੀ", name: "Punjabi (Gurmukhi script)" },
+];
+const API = "https://generativelanguage.googleapis.com/v1beta/models/";
+
+// ---------- Small helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const inr = (n) => Number(n).toLocaleString("en-IN");
+const norm = (s) => String(s || "").toLowerCase().trim();
+
+function safeSession(action, key, value) {
+  try {
+    if (action === "get") return sessionStorage.getItem(key) || "";
+    if (action === "set") sessionStorage.setItem(key, value);
+  } catch { /* storage blocked, ignore */ }
+  return "";
+}
+
+// ---------- Data files (data/prices.json, data/embeddings.json) ----------
+let PRICES = { is_sample: true, records: [] };
+let INDEX = { chunks: [] };
+async function loadData() {
+  try { PRICES = await (await fetch("data/prices.json")).json(); } catch { console.warn("prices.json not loaded"); }
+  try { INDEX = await (await fetch("data/embeddings.json")).json(); } catch { console.warn("embeddings.json not loaded"); }
+}
+
+// ---------- Gemini calls (REST, straight from the browser) ----------
+function usageTracker() {
+  const calls = [];
+  return {
+    add(step, u) { calls.push({ step, input: u?.promptTokenCount ?? 0, output: u?.candidatesTokenCount ?? 0 }); },
+    summary() {
+      const input = calls.reduce((s, c) => s + c.input, 0);
+      const output = calls.reduce((s, c) => s + c.output, 0);
+      const usd = (input * PRICE_INPUT_PER_M_USD + output * PRICE_OUTPUT_PER_M_USD) / 1e6;
+      return { calls, input, output, total: input + output, usd, inr: usd * USD_INR, model: MAIN_MODEL };
+    },
+  };
+}
+
+async function callGemini(path, body, key) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || `Gemini returned ${res.status}`);
+  return data;
+}
+
+function parseJson(text) {
+  return JSON.parse(String(text || "").replace(/```json|```/g, "").trim());
+}
+
+async function generateJson(parts, step, usage, key) {
+  const data = await callGemini(`${MAIN_MODEL}:generateContent`, {
+    contents: [{ role: "user", parts }],
+    generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+  }, key);
+  usage.add(step, data.usageMetadata);
+  return parseJson(data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join(""));
+}
+
+async function embed(text, key) {
+  const data = await callGemini(`${EMBED_MODEL}:embedContent`, { content: { parts: [{ text }] } }, key);
+  return data.embedding.values;
+}
+
+// ---------- Step 1: diagnosis ----------
+function diagnosisPrompt(cropHint) {
+  return `You are a plant disease assistant for farmers in Punjab, India.
+Look carefully at the attached photo of a crop leaf or plant.
+The farmer says the crop is: ${cropHint || "not specified"}.
+
+Return ONLY a JSON object with exactly these keys:
+{
+  "photo_ok": true or false,
+  "photo_problem": string or null,
+  "crop": string,
+  "is_healthy": true or false,
+  "disease": string or null,
+  "confidence": number between 0 and 1,
+  "severity": "none" | "mild" | "moderate" | "severe",
+  "symptoms": array of up to 4 short strings describing what you can see
+}
+
+Rules:
+- Set photo_ok to false if the photo is blurry, too dark, not a plant, or the affected part is not visible. Explain why in photo_problem in one short sentence.
+- Use common English disease names, for example "Late blight" or "Leaf rust".
+- If the plant looks healthy, set is_healthy to true, disease to null and severity to "none".
+- If you are unsure between two diseases, choose the more likely one and keep confidence below 0.6.
+- Severity: "mild" means a few spots on a few leaves, "moderate" means spreading across the plant, "severe" means most leaves or fruit affected.
+- Never invent symptoms you cannot see.`;
+}
+
+async function diagnose({ photo, cropHint, usage, key }) {
+  const d = await generateJson([
+    { inline_data: { mime_type: photo.mimeType, data: photo.base64 } },
+    { text: diagnosisPrompt(cropHint) },
+  ], "diagnosis", usage, key);
+  return {
+    photo_ok: Boolean(d.photo_ok),
+    photo_problem: d.photo_problem || null,
+    crop: d.crop || cropHint || "Unknown",
+    is_healthy: Boolean(d.is_healthy),
+    disease: d.disease || null,
+    confidence: Math.max(0, Math.min(1, Number(d.confidence) || 0)),
+    severity: ["none", "mild", "moderate", "severe"].includes(d.severity) ? d.severity : "mild",
+    symptoms: Array.isArray(d.symptoms) ? d.symptoms.slice(0, 4) : [],
+  };
+}
+
+// ---------- Step 2: retrieval from the guides (RAG) ----------
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
+}
+
+async function getGuidance({ crop, disease, key, k = 3, minScore = 0.5 }) {
+  if (!INDEX.chunks?.length) return [];
+  const q = await embed(`${crop} ${disease || "general crop care"} symptoms control treatment management`, key);
+  return INDEX.chunks
+    .map((c) => ({ source: c.source, url: c.url, text: c.text, score: cosine(q, c.embedding) }))
+    .filter((c) => c.score >= minScore)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k);
+}
+
+// ---------- Step 3: mandi price ----------
+const ALIASES = { paddy: ["paddy", "dhan", "rice"], maize: ["maize", "makka"], cotton: ["cotton", "kapas"] };
+
+function getPrice({ crop, district }) {
+  const names = ALIASES[norm(crop)] || [norm(crop)];
+  const forCrop = (PRICES.records || []).filter((r) => names.some((n) => norm(r.crop).includes(n)));
+  if (!forCrop.length) return null;
+  let rows = forCrop.filter((r) => norm(r.district) === norm(district));
+  let scope = "district";
+  if (!rows.length) { rows = forCrop; scope = "state"; }
+  rows = [...rows].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const latest = rows[0];
+  const week = rows.slice(0, 7);
+  const avg7 = Math.round(week.reduce((s, r) => s + Number(r.modal), 0) / week.length);
+  return {
+    crop: latest.crop, market: latest.market, district: latest.district, date: latest.date,
+    modal: Number(latest.modal), min: Number(latest.min), max: Number(latest.max),
+    avg7, scope, is_sample: Boolean(PRICES.is_sample),
+  };
+}
+
+// ---------- Step 4: fixed sell-or-hold rule ----------
+function sellOrHold({ diagnosis, price }) {
+  if (!price) return { call: "no_price", reason: "No mandi price found for this crop." };
+  if (diagnosis.is_healthy || diagnosis.severity === "none") {
+    return { call: "no_action", reason: "The crop looks healthy, so there is no disease pressure to sell early." };
+  }
+  const ratio = price.modal / price.avg7;
+  const trend = ratio >= 1.02 ? "above" : ratio <= 0.98 ? "below" : "close to";
+  if (diagnosis.severity === "severe") {
+    return trend !== "below"
+      ? { call: "sell_soon", reason: `Disease is severe and today's price is ${trend} the 7-day average. Treat now, and consider selling what is ready before quality drops.` }
+      : { call: "treat_then_decide", reason: "Disease is severe but today's price is below the 7-day average. Treat first and watch prices for a few days." };
+  }
+  return { call: "treat_and_hold", reason: `Disease is ${diagnosis.severity} and can usually be managed. Treat it and hold; today's price is ${trend} the 7-day average.` };
+}
+
+// ---------- Step 5: answer in the farmer's language ----------
+function answerPrompt({ diagnosis, guidance, price, decision, language }) {
+  const excerpts = guidance.length
+    ? guidance.map((g, i) => `[${i + 1}] Source: ${g.source}\n${g.text}`).join("\n\n")
+    : "NONE. No guide excerpt matched this crop and disease.";
+  const priceText = price
+    ? `${price.crop} at ${price.market} (${price.district}) on ${price.date}: modal ₹${price.modal} per quintal, range ₹${price.min}–₹${price.max}, 7-day average ₹${price.avg7}.${price.scope === "state" ? " No data for the farmer's district, so this is from another Punjab mandi." : ""}${price.is_sample ? " These are SAMPLE prices for testing, not real market data." : ""}`
+    : "No price available.";
+
+  return `You are helping a farmer in Punjab, India, understand a crop problem and what to do next.
+
+DIAGNOSIS (from a photo, may be wrong):
+${JSON.stringify(diagnosis)}
+
+GUIDE EXCERPTS (from agricultural extension guides):
+${excerpts}
+
+MANDI PRICE:
+${priceText}
+
+SELL OR HOLD SIGNAL (already decided by a fixed rule, do not change it):
+${decision.call}: ${decision.reason}
+
+Write the answer in ${language}, in simple words and short sentences that a farmer can follow. Use the native script for Hindi or Punjabi.
+
+Return ONLY a JSON object with exactly these keys:
+{
+  "headline": one sentence naming the problem and how serious it is,
+  "what_it_is": 2 to 3 sentences explaining the disease and why it spreads,
+  "do_this_week": array of 2 to 5 short action steps,
+  "prevention": array of 1 to 3 short steps for the next season,
+  "market_note": 1 to 2 sentences explaining the sell or hold signal and today's price,
+  "caution": one sentence, or null,
+  "sources_used": array of the source names you relied on
+}
+
+Rules:
+- Base every treatment step ONLY on the guide excerpts. Never invent chemical names or doses that are not in the excerpts.
+- If the excerpts are NONE or do not cover this disease, say so in do_this_week and advise contacting the local Krishi Vigyan Kendra or the Kisan Call Centre at ${KISAN_CALL_CENTRE}.
+- If confidence is below 0.6, the caution must say the diagnosis is uncertain and should be confirmed by an expert before spraying anything.
+- If any chemical is mentioned, the caution must remind the farmer to follow the label and wear protection.
+- If the prices are SAMPLE prices, say so in market_note.
+- If the crop is healthy, say so clearly and keep do_this_week to simple monitoring steps.`;
+}
+
+async function writeAnswer(args) {
+  const a = await generateJson([{ text: answerPrompt(args) }], "answer", args.usage, args.key);
+  const arr = (x) => (Array.isArray(x) ? x : []);
+  return {
+    headline: a.headline || "", what_it_is: a.what_it_is || "",
+    do_this_week: arr(a.do_this_week), prevention: arr(a.prevention),
+    market_note: a.market_note || "", caution: a.caution || null, sources_used: arr(a.sources_used),
+  };
+}
+
+// ---------- Demo mode (no key) ----------
+function demoResult(district) {
+  const price = getPrice({ crop: "Tomato", district });
+  const diagnosis = { photo_ok: true, crop: "Tomato", is_healthy: false, disease: "Early blight", confidence: 0.82, severity: "moderate", symptoms: [] };
+  return {
+    status: "ok", mode: "demo", diagnosis, price,
+    decision: sellOrHold({ diagnosis, price }),
+    answer: {
+      headline: "Demo answer: this looks like early blight, at a moderate stage.",
+      what_it_is: "This is a canned demo answer, not a real diagnosis. Paste a Gemini API key above to get a real answer from your photo.",
+      do_this_week: ["Open the Gemini API key section in the form and paste a key.", "Add guide text and rebuild data/embeddings.json so advice comes from your guides."],
+      prevention: ["Replace the sample prices in data/prices.json with a real Agmarknet download."],
+      market_note: price ? `Sample price for ${district}: ₹${inr(price.modal)} per quintal.` : "No price data loaded.",
+      caution: "Demo mode is on. Nothing here is real advice.",
+      sources_used: [],
+    },
+    usage: { total: 0, input: 0, output: 0, inr: 0, model: "demo" },
+  };
+}
+
+// ---------- The full pipeline ----------
+async function runPipeline({ photo, cropHint, district, languageCode, key }) {
+  if (!key) return demoResult(district);
+  const language = LANGUAGES.find((l) => l.code === languageCode)?.name || "English";
+  const usage = usageTracker();
+
+  const diagnosis = await diagnose({ photo, cropHint, usage, key });                 // step 1
+  if (!diagnosis.photo_ok) return { status: "retake", diagnosis };
+
+  const crop = diagnosis.crop || cropHint;
+  const guidance = diagnosis.is_healthy ? [] : await getGuidance({ crop, disease: diagnosis.disease, key }); // step 2
+  const price = getPrice({ crop, district });                                        // step 3
+  const decision = sellOrHold({ diagnosis, price });                                 // step 4
+  const answer = await writeAnswer({ diagnosis, guidance, price, decision, language, usage, key }); // step 5
+
+  const summary = usage.summary();
+  console.log("[usage]", JSON.stringify({ crop, disease: diagnosis.disease, ...summary }));
+  return { status: "ok", mode: "live", diagnosis, guidance, price, decision, answer, usage: summary };
+}
+
+// ---------- Rendering ----------
+const CALL_LABELS = {
+  sell_soon: "Treat now, consider selling soon",
+  treat_then_decide: "Treat first, then decide",
+  treat_and_hold: "Treat and hold",
+  no_action: "No need to sell early",
+  no_price: "No price signal",
+};
+
+function renderReport(r) {
+  if (r.status === "retake") {
+    return `<div class="retake" role="alert"><h2>Retake the photo</h2>
+      <p>${esc(r.diagnosis.photo_problem || "The leaf isn't clear enough to check.")} Try again in daylight, with one affected leaf filling most of the frame.</p></div>`;
+  }
+  const { diagnosis: d, answer: a, price: p, decision, usage, mode } = r;
+  const pct = Math.round(d.confidence * 100);
+  const sev = ["mild", "moderate", "severe"];
+  const list = (items, tag, cls) => `<${tag} class="${cls}">${items.map((s) => `<li>${esc(s)}</li>`).join("")}</${tag}>`;
+
+  const severity = d.is_healthy ? "" : `
+    <div><div class="gauge-label"><span>How serious</span></div>
+      <div class="severity" role="img" aria-label="Severity ${esc(d.severity)}">
+        ${sev.map((s) => `<span class="${sev.indexOf(s) <= sev.indexOf(d.severity) ? "on" : ""}">${s}</span>`).join("")}
+      </div></div>`;
+
+  const priceHtml = p ? `
+      <p class="price-big">₹${inr(p.modal)}</p>
+      <p class="price-meta">per quintal, ${esc(p.market)}, ${esc(p.date)}</p>
+      <div class="price-row"><span>Range</span><span>₹${inr(p.min)} to ₹${inr(p.max)}</span></div>
+      <div class="price-row"><span>7-day average</span><span>₹${inr(p.avg7)}</span></div>
+      ${p.scope === "state" ? `<p class="price-meta" style="margin-top:0.6rem">No data for your district, so this is the nearest Punjab mandi on file.</p>` : ""}
+      ${p.is_sample ? `<span class="sample-flag">Sample prices, not real market data</span>` : ""}`
+    : `<p>No price on file for this crop yet.</p>`;
+
+  const usageText = mode === "demo"
+    ? "Demo mode: no AI call was made. Paste a Gemini API key in the form for real checks."
+    : `This check used ${inr(usage.total)} tokens (${inr(usage.input)} in, ${inr(usage.output)} out) on ${esc(usage.model)}, about ₹${usage.inr.toFixed(3)}.`;
+
+  return `
+  <article class="report" aria-live="polite">
+    <header class="report-head">
+      <p class="crop">${esc(d.crop)}${mode === "demo" ? ", demo mode" : ""}</p>
+      <h2 class="${d.is_healthy ? "is-healthy" : ""}">${d.is_healthy ? "Looks healthy" : esc(d.disease)}</h2>
+      ${a.headline ? `<p class="headline">${esc(a.headline)}</p>` : ""}
+      <div class="gauges">
+        <div><div class="gauge-label"><span>How sure</span><span>${pct}%</span></div>
+          <div class="meter" role="img" aria-label="Confidence ${pct} percent"><span style="width:${pct}%"></span></div></div>
+        ${severity}
+      </div>
+    </header>
+    <div class="report-body">
+      <div class="report-main">
+        ${a.what_it_is ? `<h3>What it is</h3><p>${esc(a.what_it_is)}</p>` : ""}
+        ${a.do_this_week.length ? `<h3>Do this week</h3>${list(a.do_this_week, "ol", "steps")}` : ""}
+        ${a.prevention.length ? `<h3>Next season</h3>${list(a.prevention, "ul", "plain")}` : ""}
+        ${a.caution ? `<p class="caution">${esc(a.caution)}</p>` : ""}
+        <div class="sources"><h3>Where this advice comes from</h3>
+          ${a.sources_used.length ? list(a.sources_used, "ul", "") : "<p>No guide matched this problem. Confirm with your local Krishi Vigyan Kendra.</p>"}
+        </div>
+      </div>
+      <aside class="report-side">
+        <h3>Mandi price today</h3>${priceHtml}
+        ${decision ? `<div class="call"><strong>${esc(CALL_LABELS[decision.call] || decision.call)}</strong><p>${esc(a.market_note || decision.reason)}</p></div>` : ""}
+      </aside>
+    </div>
+    <p class="usage">${usageText}</p>
+  </article>`;
+}
+
+// ---------- Form wiring ----------
+let photo = null;
+let language = "en";
+
+async function resizeImage(file, maxSide = 1024) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  return { dataUrl, base64: dataUrl.split(",")[1], mimeType: "image/jpeg" };
+}
+
+function showError(msg) {
+  $("error").textContent = msg;
+  $("error").classList.toggle("hidden", !msg);
+}
+
+function updateModeTag() {
+  $("modeTag").textContent = $("apiKey").value.trim() ? "(live checks on)" : "(demo mode)";
+}
+
+async function pick(file) {
+  showError("");
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return showError("That file isn't a photo. Choose a JPG or PNG image.");
+  try {
+    photo = await resizeImage(file);
+    $("preview").src = photo.dataUrl;
+    $("preview").classList.remove("hidden");
+    $("dropText").classList.add("hidden");
+  } catch {
+    showError("This photo couldn't be opened. Try another one.");
+  }
+}
+
+function init() {
+  document.querySelectorAll("#appName, .app-name").forEach((el) => (el.textContent = APP_NAME));
+  document.title = `${APP_NAME}: photo-based crop disease check`;
+
+  CROPS.forEach((c) => $("crop").insertAdjacentHTML("beforeend", `<option>${c}</option>`));
+  DISTRICTS.forEach((d) => $("district").insertAdjacentHTML("beforeend", `<option>${d}</option>`));
+  LANGUAGES.forEach((l) => $("langs").insertAdjacentHTML("beforeend",
+    `<label><input type="radio" name="lang" value="${l.code}" ${l.code === "en" ? "checked" : ""}><span>${l.label}</span></label>`));
+  $("langs").addEventListener("change", (e) => (language = e.target.value));
+
+  $("apiKey").value = safeSession("get", "gemini_key");
+  updateModeTag();
+  $("apiKey").addEventListener("input", () => { safeSession("set", "gemini_key", $("apiKey").value.trim()); updateModeTag(); });
+
+  $("file").addEventListener("change", (e) => pick(e.target.files?.[0]));
+  const drop = $("drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("is-over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("is-over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("is-over"); pick(e.dataTransfer.files?.[0]); });
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!photo) return showError("Add a photo of the leaf first.");
+    showError("");
+    const btn = $("submit");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="working"><span class="dot"></span>Checking the leaf, guides and prices</span>`;
+    try {
+      const result = await runPipeline({
+        photo, cropHint: $("crop").value, district: $("district").value,
+        languageCode: language, key: $("apiKey").value.trim(),
+      });
+      $("reportInner").innerHTML = renderReport(result);
+      $("report").classList.remove("hidden");
+      $("report").scrollIntoView();
+    } catch (err) {
+      console.error(err);
+      showError(`The check didn't finish: ${err.message}. Check the API key and try again.`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Check my crop";
+    }
+  });
+
+  loadData();
+}
+
+init();
+
+</script>
+</body>
+</html>
