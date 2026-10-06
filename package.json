@@ -1,12 +1,18 @@
 {
-  "name": "fasaldoc-pages",
+  "name": "fasaldoc",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "embed": "node scripts/build-embeddings.mjs",
     "prices": "node scripts/csv-to-prices.mjs"
   },
   "dependencies": {
-    "@google/genai": "^2.27.0"
+    "@google/genai": "^2.27.0",
+    "next": "^15.5.27",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }
