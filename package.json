@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "embed": "node scripts/build-embeddings.mjs",
+    "embed": "node scripts/embed-chunks.mjs",
     "prices": "node scripts/csv-to-prices.mjs"
   },
   "dependencies": {
